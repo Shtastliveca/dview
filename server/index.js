@@ -67,7 +67,7 @@ app.post("/api/signal", async (req, res) => {
 });
 
 // Catch-all: serve React app for any non-API route
-app.get("*", (_, res) => {
+app.get("/{*splat}", (_, res) => {
   res.sendFile(path.join(__dirname, "../dist/index.html"));
 });
 
