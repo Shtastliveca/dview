@@ -1,12 +1,13 @@
 import React, { useRef, useEffect } from "react";
-import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
+import { createChart, CandlestickSeries, LineSeries, createSeriesMarkers } from "lightweight-charts";
 
 export default function Chart({ candles, overlays, trades, loading }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
-  const overlaySeriesRef = useRef([]); // to track and remove old overlays
-  const markerRef = useRef(null);
+  const overlaySeriesRef = useRef([]);
+  const markersRef = useRef(null); // v5 markers primitive
+  const prevCandlesRef = useRef([]);
 
   // Create chart on mount
   useEffect(() => {
@@ -34,7 +35,6 @@ export default function Chart({ candles, overlays, trades, loading }) {
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
 
-    // Resize handler
     const ro = new ResizeObserver(() => {
       if (containerRef.current) {
         chart.applyOptions({
@@ -48,25 +48,36 @@ export default function Chart({ candles, overlays, trades, loading }) {
     return () => { ro.disconnect(); chart.remove(); };
   }, []);
 
-  // Update candle data
+  // Update candle data — smart: only fitContent on full reloads, not live ticks
   useEffect(() => {
-    if (candleSeriesRef.current && candles.length) {
+    if (!candleSeriesRef.current || !candles.length) return;
+
+    const prev = prevCandlesRef.current;
+    const isLiveUpdate =
+      prev.length > 0 &&
+      (candles.length === prev.length || candles.length === prev.length + 1);
+
+    if (isLiveUpdate) {
+      // Live tick: update just the last candle, don't reset the view
+      candleSeriesRef.current.update(candles[candles.length - 1]);
+    } else {
+      // Full reload (new symbol, new interval, initial load)
       candleSeriesRef.current.setData(candles);
       chartRef.current.timeScale().fitContent();
     }
+
+    prevCandlesRef.current = candles;
   }, [candles]);
 
   // Update indicator overlays
   useEffect(() => {
     if (!chartRef.current || !candles.length) return;
 
-    // Remove old overlay series
     overlaySeriesRef.current.forEach((s) => {
       try { chartRef.current.removeSeries(s); } catch {}
     });
     overlaySeriesRef.current = [];
 
-    // Compute and add new overlays
     const closes = candles.map((c) => c.close);
 
     overlays.forEach((ov) => {
@@ -76,7 +87,7 @@ export default function Chart({ candles, overlays, trades, loading }) {
       } else if (ov.type === "EMA") {
         values = computeEMA(closes, ov.period);
       } else {
-        return; // RSI, MACD etc. need a separate pane (can add later)
+        return;
       }
 
       const lineData = values
@@ -93,12 +104,13 @@ export default function Chart({ candles, overlays, trades, loading }) {
     });
   }, [overlays, candles]);
 
-  // Trade markers
+  // Trade markers (v5 API: createSeriesMarkers)
   useEffect(() => {
-    if (!candleSeriesRef.current || !trades.length) return;
+    if (!candleSeriesRef.current) return;
 
+    // Build marker array
     const markers = [];
-    trades.forEach((t) => {
+    (trades || []).forEach((t) => {
       markers.push({
         time: t.entryTime,
         position: t.side === "long" ? "belowBar" : "aboveBar",
@@ -114,10 +126,19 @@ export default function Chart({ candles, overlays, trades, loading }) {
         text: `CLOSE ${t.pnl >= 0 ? "+" : ""}${t.pnl.toFixed(2)}`,
       });
     });
-
-    // Sort markers by time (required by lightweight-charts)
     markers.sort((a, b) => a.time - b.time);
-    candleSeriesRef.current.setMarkers(markers);
+
+    try {
+      if (markersRef.current) {
+        // Update existing markers primitive
+        markersRef.current.setMarkers(markers);
+      } else if (markers.length > 0) {
+        // Create new markers primitive (v5 API)
+        markersRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+      }
+    } catch (err) {
+      console.warn("Markers error:", err);
+    }
   }, [trades]);
 
   return (
@@ -132,7 +153,7 @@ export default function Chart({ candles, overlays, trades, loading }) {
   );
 }
 
-// ─── Frontend-side indicator computation for chart overlays ──
+// ─── Frontend-side indicator computation ─────────────────
 function computeSMA(closes, period) {
   const r = new Array(closes.length).fill(NaN);
   for (let i = period - 1; i < closes.length; i++) {
