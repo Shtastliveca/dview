@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { createChart } from "lightweight-charts";
+import { createChart, CandlestickSeries, LineSeries } from "lightweight-charts";
 
 export default function Chart({ candles, overlays, trades, loading }) {
   const containerRef = useRef(null);
@@ -25,7 +25,7 @@ export default function Chart({ candles, overlays, trades, loading }) {
       rightPriceScale: { borderColor: "#2a2a35" },
     });
 
-    const candleSeries = chart.addCandlestickSeries({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#26a69a", downColor: "#ef5350",
       borderUpColor: "#26a69a", borderDownColor: "#ef5350",
       wickUpColor: "#26a69a", wickDownColor: "#ef5350",
@@ -83,7 +83,7 @@ export default function Chart({ candles, overlays, trades, loading }) {
         .map((v, i) => (isNaN(v) ? null : { time: candles[i].time, value: v }))
         .filter(Boolean);
 
-      const series = chartRef.current.addLineSeries({
+      const series = chartRef.current.addSeries(LineSeries, {
         color: ov.color || "#2d5af7",
         lineWidth: 2,
         priceLineVisible: false,
