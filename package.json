@@ -1,9 +1,40 @@
 {
+  "name": "dview",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
-    "server": "node server/index.js",
     "start": "node server/index.js"
   },
-  "type": "module"
+  "description": "",
+  "main": "server/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Shtastliveca/dview.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Shtastliveca/dview/issues"
+  },
+  "homepage": "https://github.com/Shtastliveca/dview#readme",
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lightweight-charts": "^5.2.0",
+    "node-fetch": "^3.3.2",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.12"
+  }
 }
